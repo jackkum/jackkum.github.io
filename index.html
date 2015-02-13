@@ -4,7 +4,6 @@
 		<title>Куманин Евгений</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="stylesheet" type="text/css" href="cube.css" />
 		<script src="/js/jquery.min.js"></script>
 		<script src="/three.js/build/three.js"></script>
 		<script src="/js/Detector.js"></script>
@@ -58,7 +57,7 @@
 					renderer = new THREE.WebGLRenderer({antialias: false, alpha: false});
 					renderer.setSize(window.innerWidth, window.innerHeight);
 					renderer.setClearColor(0x000000);
-					$(documnt.body).append(renderer.domElement);
+					$(document.body).append(renderer.domElement);
 					
 					renderer.shadowMapEnabled  = true;
 					renderer.shadowMapSoft     = true;
