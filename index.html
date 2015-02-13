@@ -8,6 +8,7 @@
 		<script src="/three.js/build/three.js"></script>
 		<script src="/js/Detector.js"></script>
 		<script src="/js/OrbitControls.js"></script>
+		
 		<style type="text/css">
 			body {
 				font-family: Monospace;
@@ -41,6 +42,23 @@
 						if(renderer && scene && camera){
 							renderer.render(scene, camera);
 						}
+					};
+					
+					function animate()
+					{
+						window.requestAnimationFrame(animate);
+						
+						// if controls created
+						if(controls !== null){
+							controls.update();
+						}
+							
+						var r = Date.now() * 0.0005;
+						camera.position.x = 1200 * Math.cos(r);
+						camera.position.z = 1200 * Math.sin(r);
+						camera.lookAt(new THREE.Vector3(0,0,0));
+						
+						render();
 					};
 					
 					camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 1, 10000);
@@ -106,6 +124,8 @@
 							renderer.setSize(window.innerWidth, window.innerHeight);
 						}
 					);
+					
+					animate();
 					
 				});
 			})(jQuery);
