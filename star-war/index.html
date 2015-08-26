@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Star-war</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #FFFFFF;
+				margin: 0px;
+				padding:0px;
+				overflow: hidden;
+			}
+			
+			#log {
+				position:absolute;
+				top: 10px;
+				left:10px;
+				right:10px;
+				height:100px;
+				overflow: hidden;
+				color:#f00;
+				text-align:center;
+			}
+			
+		</style>
+		<script src="/js/jquery.min.js"></script>
+		<script src="/three.js/build/three.js"></script>
+		<script src="/physi.js/physi.js"></script>
+		
+		<script type="text/javascript">
+		window._inherit = function(child, parent)
+		{
+			var F = function(){};
+			F.prototype = parent.prototype;
+			var f = new F();
+			
+			for (var prop in child.prototype) f[prop] = child.prototype[prop];
+			child.prototype = f;
+			child.prototype.super = parent.prototype;
+		};
+		
+		</script>
+		
+		<script src="/star-war/objects/ship.js"></script>
+		<script src="/star-war/objects/planet.js"></script>
+		
+		<script type="text/javascript">
+			;(function($){
+				$(function(){
+					
+					window.starwar = {};
+					
+					;(function(){
+						
+						/***
+						 * container form renderer
+						 */
+						this.container = null;
+						
+						/***
+						 * camera object
+						 */
+						this.camera    = null;
+						
+						/***
+						 * Projector
+						 */
+						this.projector = null;
+						
+						/***
+						 * Scene object
+						 */
+						this.scene     = null;
+						
+						/***
+						 * Renderer
+						 */
+						this.renderer  = null;
+						
+						/***
+						 * Controls
+						 */
+						this.controls = null;
+						
+						/***
+						 * Lightnes
+						 */
+						this.light = null;
+						
+						/***
+						 * The sun
+						 */
+						this.sun = null;
+						
+						/***
+						 * Ship object
+						 */
+						this.ship = null;
+						
+						/***
+						 * Half window size
+						 */
+						this.windowHalfX = window.innerWidth / 2;
+						this.windowHalfY = window.innerHeight / 2;
+						
+						Physijs.scripts.worker = '/physi.js/physijs_worker.js';
+						Physijs.scripts.ammo   = '/physi.js/ammo.js';
+						
+						/***
+						 * Initialize function
+						 */
+						this.init = function()
+						{
+							// create container
+							this.container = $('<div/>');
+							$(document.body).append(this.container);
+							
+							// create scene must be created before camera
+							this.createScene();
+							
+							// create camera
+							this.createCamera();
+							
+							// create renderer
+							this.createRender();
+							
+							// create ship
+							this.createShip();
+							
+							// create ship
+							this.createPlanets();
+							
+							// self instance
+							var self = this;
+							
+							// bind resize window
+							$(window).on(
+								'resize', 
+								(function(self){
+									return function(event)
+									{
+										self.resize(event);
+									};
+								})(self)
+							).on(
+								'keydown', 
+								(function(self){
+									return function(event)
+									{
+										self.onKeyDown(event);
+									};
+								})(self)
+							).on(
+								'keyup', 
+								(function(self){
+									return function(event)
+									{
+										self.onKeyUp(event);
+									};
+								})(self)
+							);
+							
+						};
+						
+						this.onKeyDown = function(event)
+						{
+							if(this.ship){
+								this.ship.onKeyDown(event);
+							}
+						};
+						
+						this.onKeyUp = function(event)
+						{
+							if(this.ship){
+								this.ship.onKeyUp(event);
+							}
+						};
+						
+						/***
+						 * On mouse move listener
+						 */
+						this.onMouseMove = function(event)
+						{
+							
+						};
+						
+						/***
+						 * On mouse down listener
+						 */
+						this.onMouseDown = function(event)
+						{
+							
+						};
+						
+						/***
+						 * On mouse up listener
+						 */
+						this.onMouseUp = function(event)
+						{
+							
+						};
+						
+						/***
+						 * Animate function 
+						 */ 
+						this.animate = function()
+						{
+							window.requestAnimationFrame(window.animate);
+							
+							// render
+							this.render();
+							
+							if(this.ship){
+								this.ship.folowCamera(this.camera);
+							}
+							/*
+							var r = Date.now() * 0.0001;
+				
+							this.camera.position.x = 30 * Math.cos(r);
+							this.camera.position.z = 30 * Math.sin(r);
+							this.camera.position.y = 10;
+							this.camera.lookAt(new THREE.Vector3(0,0,0));
+							*/
+						};
+						
+						/***
+						 * Call window.road.animate method
+						 */ 
+						window.animate = function()
+						{
+							window.starwar.animate.call(window.starwar);
+						};
+						
+						
+						/***
+						 * Render scene
+						 */
+						this.render = function()
+						{
+							if(this.renderer && this.scene && this.camera){
+								this.scene.simulate();
+								this.renderer.render(this.scene, this.camera);
+								
+								if(this.ship){
+									this.ship.update();
+								}
+							}
+						};
+						
+						/***
+						 * Create camera
+						 */
+						this.createCamera = function()
+						{
+							this.camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 1, 1000000000);
+							this.camera.position.set(0, 30, 30);
+							this.camera.lookAt(new THREE.Vector3(0,0,0));
+							
+							this.scene.add(this.camera);
+						};
+						
+						this.createControls = function()
+						{
+							this.controls = new THREE.OrbitControls(this.camera);
+							this.controls.addEventListener('change', this.render);
+						};
+						
+						/***
+						 * Create scene
+						 */
+						this.createScene = function()
+						{
+							var self = this;
+							this.projector = new THREE.Projector();
+							this.scene = new Physijs.Scene;
+							//this.scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+							
+							this.scene.addEventListener(
+								'update',
+								(function(scene){
+									return function() 
+									{
+										scene.simulate(undefined, 2);
+									};
+								})(this.scene)
+							);
+							
+							var ambient = new THREE.AmbientLight(0xFFFFFF);
+							
+							this.scene.add(ambient);
+							
+							
+							
+							//var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+							//hemiLight.color.setHSL(0.6, 1, 0.6);
+							//hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+							//hemiLight.position.set(-300, 300, 100);
+							
+							//this.scene.add(hemiLight);
+							
+							// 0xffe382
+							this.sun = new THREE.PointLight(0xFFFFFF, 1, 10000); 
+							this.sun.position.set(1000, 100, -1000);
+							
+							this.scene.add(this.sun);
+							
+						};
+						
+						/***
+						 * Create renderer
+						 */
+						this.createRender = function()
+						{
+							this.renderer = new THREE.WebGLRenderer({antialias: false, alpha: false});
+							this.renderer.setSize(window.innerWidth, window.innerHeight);
+							this.renderer.setClearColor(0x000000);
+							this.container.append(this.renderer.domElement);
+							
+							this.renderer.shadowMapEnabled = true;
+							this.renderer.shadowMapSoft = true;
+							
+							this.renderer.shadowCameraNear = 3;
+							this.renderer.shadowCameraFar = this.camera.far;
+							this.renderer.shadowCameraFov = 50;
+							
+							this.renderer.shadowMapBias = 0.0039;
+							this.renderer.shadowMapDarkness = 0.5;
+							this.renderer.shadowMapWidth = 1024;
+							this.renderer.shadowMapHeight = 1024;
+						};
+						
+						this.createShip = function()
+						{
+							this.ship = new Ship();
+							
+							this.ship.load((function(self){
+								return function()
+								{
+									self.ship.addToScene(self.scene);
+								};
+							})(this));
+						};
+						
+						this.createPlanets = function()
+						{
+							var mars = new Planet('mars', 'texture.jpg', '1.0.4', {x:-500,y:-300,z:500});
+							
+							mars.load((function(self,mars){
+								return function()
+								{
+									mars.addToScene(self.scene);
+								};
+							})(this,mars));
+						};
+						
+						/***
+						 * Conver grad to rad
+						 */
+						this.rad = function(a)
+						{
+							return (a*Math.PI/180);
+						};
+						
+						/***
+						 * calback on resize window
+						 */
+						this.resize = function(event)
+						{
+							this.windowHalfX = window.innerWidth / 2;
+							this.windowHalfY = window.innerHeight / 2;
+			
+							this.camera.aspect = window.innerWidth / window.innerHeight;
+							this.camera.updateProjectionMatrix();
+			
+							this.renderer.setSize(window.innerWidth, window.innerHeight);
+							
+						};
+						
+						/***
+						 * Debug message
+						 */
+						this.log = function(text)
+						{
+							$('#log').html(text);
+						};
+						
+						/***
+						 * Start game
+						 */
+						this.init();
+						this.animate();
+						
+					}).call(window.starwar);
+				});
+			})(jQuery);
+		</script>
+	</head>
+	<body>
+		<div id="log">
+			
+		</div>
+		
+	</body>
+</html>
