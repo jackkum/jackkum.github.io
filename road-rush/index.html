@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>RoadRush</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #FFFFFF;
+				margin: 0px;
+				padding:0px;
+				overflow: hidden;
+			}
+			
+			#log {
+				position:absolute;
+				top: 10px;
+				left:10px;
+				right:10px;
+				height:100px;
+				overflow: hidden;
+				color:#f00;
+				text-align:center;
+			}
+			
+		</style>
+		<script src="/js/jquery.min.js"></script>
+		<script src="/three.js/build/three.js"></script>
+		<script src="/three.js/examples/js/libs/dat.gui.min.js"></script>
+		<script src="/physi.js/physi.js"></script>
+		
+		<script type="text/javascript">
+		window._inherit = function(child, parent)
+		{
+			var F = function(){};
+			F.prototype = parent.prototype;
+			var f = new F();
+			
+			for (var prop in child.prototype) f[prop] = child.prototype[prop];
+			child.prototype = f;
+			child.prototype.super = parent.prototype;
+		};
+		
+		var post_suspension_stiffness 	  = <?php echo $suspension_stiffness; ?>;
+		var post_suspension_compression   = <?php echo $suspension_compression; ?>;
+		var post_suspension_damping		  = <?php echo $suspension_damping; ?>;
+		var post_max_suspension_travel 	  = <?php echo $max_suspension_travel; ?>;
+		var post_friction_slip 			  = <?php echo $friction_slip; ?>;
+		var post_max_suspension_force 	  = <?php echo $max_suspension_force; ?>;
+		var post_wheel_radius             = <?php echo $wheel_radius; ?>;
+		var post_suspension_rest_length   = <?php echo $suspension_rest_length; ?>;
+		var post_connection_point_front_x = <?php echo $connection_point_front_x; ?>;
+		var post_connection_point_front_y = <?php echo $connection_point_front_y; ?>;
+		var post_connection_point_front_z = <?php echo $connection_point_front_z; ?>;
+		var post_connection_point_back_x  = <?php echo $connection_point_back_x; ?>;
+		var post_connection_point_back_y  = <?php echo $connection_point_back_y; ?>;
+		var post_connection_point_back_z  = <?php echo $connection_point_back_z; ?>;
+		
+		</script>
+		
+		<script src="/road-rush/objects/bikes/bike.js"></script>
+		<script src="/road-rush/objects/bikes/M1030/object.js"></script>
+		<script src="/road-rush/objects/bikes/DUC916/object.js"></script>
+		<script src="/road-rush/objects/bikes/YamahaM1/object.js"></script>
+		
+		<script type="text/javascript">
+			;(function($){
+				$(function(){
+					
+					window.road = {};
+					
+					;(function(){
+						
+						/***
+						 * container form renderer
+						 */
+						this.container = null;
+						
+						/***
+						 * camera object
+						 */
+						this.camera    = null;
+						
+						/***
+						 * Projector
+						 */
+						this.projector = null;
+						
+						/***
+						 * Scene object
+						 */
+						this.scene     = null;
+						
+						/***
+						 * Renderer
+						 */
+						this.renderer  = null;
+						
+						/***
+						 * Controls
+						 */
+						this.controls = null;
+						
+						/***
+						 * Lightnes
+						 */
+						this.light = null;
+						
+						this.bike = null;
+						this.road  = null;
+						this.speed = 0;
+						
+						/***
+						 * Half window size
+						 */
+						this.windowHalfX = window.innerWidth / 2;
+						this.windowHalfY = window.innerHeight / 2;
+						
+						Physijs.scripts.worker = '/physi.js/physijs_worker.js';
+						Physijs.scripts.ammo   = '/physi.js/ammo.js';
+						
+						/***
+						 * Initialize function
+						 */
+						this.init = function()
+						{
+							// create container
+							this.container = $('<div/>');
+							$(document.body).append(this.container);
+							
+							// create scene must be created before camera
+							this.createScene();
+							
+							// create camera
+							this.createCamera();
+							
+							// create renderer
+							this.createRender();
+							
+							//create road
+							this.createRoad();
+							
+							// create bike
+							//this.createBike();
+							
+							// self instance
+							var self = this;
+							
+							// bind resize window
+							$(window).on(
+								'resize', 
+								(function(self){
+									return function(event)
+									{
+										self.resize(event);
+									};
+								})(self)
+							)
+							.on(
+								'keydown',
+								(function(self){
+									return function(event)
+									{
+										self.onKeyDown(event);
+									};
+								})(self)
+							);
+							
+						};
+						
+						this.onKeyDown = function(event)
+						{
+							//console.log(event);
+							switch(event.keyCode){
+								case 38: 
+									if(this.speed < 10){
+										this.speed += 0.5;
+									}
+								break;
+								case 40: 
+									if(this.speed > 0){
+										this.speed -= 0.05;
+									} else {
+										this.speed = 0;
+									}
+								break;
+							}
+							
+						};
+						
+						/***
+						 * On mouse move listener
+						 */
+						this.onMouseMove = function(event)
+						{
+							
+						};
+						
+						/***
+						 * On mouse down listener
+						 */
+						this.onMouseDown = function(event)
+						{
+							
+						};
+						
+						/***
+						 * On mouse up listener
+						 */
+						this.onMouseUp = function(event)
+						{
+							
+						};
+						
+						/***
+						 * Animate function 
+						 */ 
+						this.animate = function()
+						{
+							window.requestAnimationFrame(window.animate);
+							
+							// render
+							this.render();
+							
+							//if(this.bike){
+								//this.log("Speed: " + this.bike.speed.value);
+								//this.bike.folowCamera(this.camera);
+								var r = Date.now() * 0.0001;
+				
+								this.camera.position.x = 1000 * Math.cos(r);
+								this.camera.position.z = 1000 * Math.sin(r);
+								this.camera.position.y = 500;
+								this.camera.lookAt(/*this.bike.object.position*/new THREE.Vector3(0,0,0));
+							//}
+						};
+						
+						/***
+						 * Call window.road.animate method
+						 */ 
+						window.animate = function()
+						{
+							window.road.animate.call(window.road);
+						};
+						
+						
+						/***
+						 * Render scene
+						 */
+						this.render = function()
+						{
+							if(this.renderer && this.scene && this.camera){
+								this.scene.simulate();
+								this.renderer.render(this.scene, this.camera);
+							}
+							
+							if(this.bike){
+								if (this.bike.wheels.vehicle){
+									//this.camera.position.copy(this.bike.wheels.vehicle.mesh.position).add(new THREE.Vector3(10, 5, -10));
+									//this.camera.lookAt(this.bike.wheels.vehicle.mesh.position );
+								}
+							}
+						};
+						
+						this.createBike = function()
+						{
+							/*
+							//this.bike
+							var geometry = new THREE.CubeGeometry(10, 10, 10);
+							for(var x = 0; x < geometry.faces.length; x++){
+								var color = Math.floor(Math.random()*0xFFFFFF);
+								geometry.faces[x].color.setHex(color);
+							}
+							
+							var material = new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors} );
+							this.bike    = new THREE.Mesh(geometry, material);
+							
+							this.bike = new Physijs.BoxMesh(geometry, material);
+							*/
+							
+							var self = this;
+							this.bike = new Bike_DUC916();
+							this.bike.load(function(){
+								//console.log(self.scene);
+								self.bike.addToScene(self.scene);
+							});
+							
+							//this.scene.add(this.bike);
+						};
+						
+						this.createRoad = function()
+						{
+							var material = Physijs.createMaterial(
+								new THREE.MeshBasicMaterial({
+									vertexColors: THREE.FaceColors, 
+									overdraw: true
+								}),
+								.4, // low friction
+								.6 // high restitution
+							);
+							
+							var plane = new THREE.PlaneGeometry(10000, 10000, 1, 1);
+							
+							plane.computeFaceNormals();
+							plane.computeVertexNormals();
+							
+							//console.log(plane.vertices);
+							
+							var ground = new Physijs.HeightfieldMesh(plane,material,0);
+							
+							ground.rotation.x    = -Math.PI / 2;
+							ground.position.y = -50;
+							ground.receiveShadow = true;
+							
+							this.scene.add(ground);
+							
+							var self = this;
+							loader = new THREE.JSONLoader();
+							loader.load( "/road-rush/objects/ground/ground2.js?v=1.0.5", function(geometry, materials){
+							    var material = new Physijs.createMaterial(new THREE.MeshFaceMaterial(materials),.8, 0); 
+								self.road = new Physijs.BoxMesh(geometry,material,10000);
+								
+								self.road.rotation.y = (150*Math.PI/180);
+								self.road.position.y = -30;
+								self.road.receiveShadow = true;
+								self.road.scale.set(100,100,100);
+								
+								self.scene.add(self.road);
+								
+								//self.createBike();
+							});
+							
+						};
+						
+						/***
+						 * Create camera
+						 */
+						this.createCamera = function()
+						{
+							this.camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 1, 10000);
+							this.camera.position.set(300, 200, -300);
+							this.camera.lookAt(new THREE.Vector3(0,0,0));
+							
+							this.scene.add(this.camera);
+						};
+						
+						this.createControls = function()
+						{
+							this.controls = new THREE.OrbitControls(this.camera);
+							this.controls.addEventListener('change', this.render);
+						};
+						
+						/***
+						 * Create scene
+						 */
+						this.createScene = function()
+						{
+							var self = this;
+							this.projector = new THREE.Projector();
+							this.scene = new Physijs.Scene;
+							this.scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+							//this.scene = new THREE.Scene();
+							//this.scene.fog = new THREE.Fog(0xCCCCCC, 1000, 1000);
+							
+							this.scene.addEventListener(
+								'update',
+								(function(scene){
+									return function() {
+										if(self.bike) self.bike.update();
+										scene.simulate(undefined, 2);
+									};
+								})(this.scene)
+							);
+							
+							var ambient = new THREE.AmbientLight(0xFFFFFF);
+							this.scene.add(ambient);
+							
+							this.light = new THREE.SpotLight(0xffffff);
+							this.light.position.set(0,500,0);
+			
+							this.light.castShadow = true;
+							
+							this.scene.add(this.light);
+							
+						};
+						
+						/***
+						 * Create renderer
+						 */
+						this.createRender = function()
+						{
+							this.renderer = new THREE.WebGLRenderer({antialias: false, alpha: false});
+							this.renderer.setSize(window.innerWidth, window.innerHeight);
+							this.renderer.setClearColor(0x000000);
+							this.container.append(this.renderer.domElement);
+							
+							this.renderer.shadowMapEnabled = true;
+							this.renderer.shadowMapSoft = true;
+							
+							this.renderer.shadowCameraNear = 3;
+							this.renderer.shadowCameraFar = this.camera.far;
+							this.renderer.shadowCameraFov = 50;
+							
+							this.renderer.shadowMapBias = 0.0039;
+							this.renderer.shadowMapDarkness = 0.5;
+							this.renderer.shadowMapWidth = 1024;
+							this.renderer.shadowMapHeight = 1024;
+							//this.renderer.gammaInput = true;
+							//this.renderer.gammaOutput = true;
+							//this.renderer.physicallyBasedShading = true;
+						};
+						
+						/***
+						 * Conver grad to rad
+						 */
+						this.rad = function(a)
+						{
+							return (a*Math.PI/180);
+						};
+						
+						/***
+						 * calback on resize window
+						 */
+						this.resize = function(event)
+						{
+							this.windowHalfX = window.innerWidth / 2;
+							this.windowHalfY = window.innerHeight / 2;
+			
+							this.camera.aspect = window.innerWidth / window.innerHeight;
+							this.camera.updateProjectionMatrix();
+			
+							this.renderer.setSize(window.innerWidth, window.innerHeight);
+							
+						};
+						
+						/***
+						 * Debug message
+						 */
+						this.log = function(text)
+						{
+							$('#log').html(text);
+						};
+						
+						/***
+						 * Start game
+						 */
+						this.init();
+						this.animate();
+						
+					}).call(window.road);
+				});
+			})(jQuery);
+		</script>
+	</head>
+	<body>
+		<div id="log">
+			
+		</div>
+		
+		<div style="position: absolute; right: 10px; top:10px; width: 200px; z-index: 100;">
+			<form method="post">
+				<input name="suspension_stiffness" value="<?php echo $_POST['suspension_stiffness']; ?>" /><br/>
+				<input name="suspension_compression" value="<?php echo $_POST['suspension_compression']; ?>" /><br/>
+				<input name="suspension_damping" value="<?php echo $_POST['suspension_damping']; ?>" /><br/>
+				<input name="max_suspension_travel" value="<?php echo $_POST['max_suspension_travel']; ?>" /><br/>
+				<input name="friction_slip" value="<?php echo $_POST['friction_slip']; ?>" /><br/>
+				<input name="max_suspension_force" value="<?php echo $_POST['max_suspension_force']; ?>" /><br/>
+				<input name="wheel_radius" value="<?php echo $_POST['wheel_radius']; ?>" /><br/>
+				<input name="connection_point_front_x" value="<?php echo $_POST['connection_point_front_x']; ?>" /><br/>
+				<input name="connection_point_front_y" value="<?php echo $_POST['connection_point_front_y']; ?>" /><br/>
+				<input name="connection_point_front_z" value="<?php echo $_POST['connection_point_front_z']; ?>" /><br/>
+				<input name="suspension_rest_length" value="<?php echo $_POST['suspension_rest_length']; ?>" /><br/>
+				<input name="connection_point_back_x" value="<?php echo $_POST['connection_point_back_x']; ?>" /><br/>
+				<input name="connection_point_back_y" value="<?php echo $_POST['connection_point_back_y']; ?>" /><br/>
+				<input name="connection_point_back_z" value="<?php echo $_POST['connection_point_back_z']; ?>" /><br/>
+				<input type="submit" value="submit" />
+			</form>
+		</div>
+	</body>
+</html>
