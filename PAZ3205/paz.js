@@ -58,12 +58,12 @@ function PAZ3205()
 		
 		var self = this;
 		loader = new THREE.JSONLoader();
-		loader.load( "/PAZ3205/objects/paz3205.js", function(geometry, materials){
-		//loader.load( "/star-war/objects/three.js/alien/planet.js?v=1.0.9", function(geometry, materials){
+		//loader.load( "/PAZ3205/objects/paz3205.js", function(geometry, materials){
+		loader.load( "/star-war/objects/three.js/alien/planet.js?v=1.0.9", function(geometry, materials){
 			//materials[0].shading = THREE.SmoothShading;
 			//materials[0].morphTargets = true;
-		    var material = new THREE.MeshFaceMaterial(materials);
-		    //var material = new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('/star-war/objects/three.js/alien/planet_Bog1200.png')});
+		    //var material = new THREE.MeshFaceMaterial(materials);
+		    var material = new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('/star-war/objects/three.js/alien/planet_Bog1200.png')});
 		    self.object = new Physijs.BoxMesh(geometry, material, 0);
 			self.object.position.set(0,0,0);
 			
