@@ -194,20 +194,21 @@
 							if(this.paz){
 							//	this.log("Speed: " + this.bike.speed.value);
 							//	this.bike.folowCamera(this.camera);
-								var r = Date.now() * 0.0001;
+								var r = Date.now() * 0.0001,
+									s = 0.1;
 				
 								this.camera.position.x = this.distance * Math.cos(r);
 								this.camera.position.z = this.distance * Math.sin(r);
 								this.camera.lookAt(this.paz.object.position);
 								
 								if(this.distanceWay){
-									this.distance -= 0.01;
+									this.distance -= s;
 									
 									if(this.distance <= 10){
 										this.distanceWay = 0;
 									}
 								} else {
-									this.distance += 0.01;
+									this.distance += s;
 									
 									if(this.distance >= 80){
 										this.distanceWay = 1;
